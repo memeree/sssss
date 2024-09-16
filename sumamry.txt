@@ -1,0 +1,101 @@
+Sub CountUsedRowsFromMultipleWorkbooks()
+
+    Dim selectedFiles As Variant
+    Dim i As Long
+    Dim sourceWorkbook As Workbook
+    Dim yesCount As Long, noCount As Long
+    Dim totalYes As Long, totalNo As Long
+    Dim filePath As String
+    Dim resultsSheet As Worksheet
+    Dim lastRow As Long
+    Dim sheetExists As Boolean
+    Dim ws As Worksheet
+
+    On Error GoTo ErrorHandler ' Set up error handling
+
+    ' Prompt the user to select multiple workbooks
+    selectedFiles = Application.GetOpenFilename("Excel Files (*.xls; *.xlsx; *.xlsm), *.xls; *.xlsx; *.xlsm", MultiSelect:=True, Title:="Select workbooks with data")
+    
+    ' Check if any files were selected
+    If IsArray(selectedFiles) = False Then
+        MsgBox "No workbooks selected. Exiting macro.", vbExclamation
+        Exit Sub
+    End If
+
+    ' Initialize counters
+    yesCount = 0
+    noCount = 0
+
+    ' Loop through each selected workbook
+    For i = LBound(selectedFiles) To UBound(selectedFiles)
+        ' Open each workbook
+        Set sourceWorkbook = Workbooks.Open(selectedFiles(i))
+        
+        ' Call the counting function for each workbook
+        Call CountRowsInWorkbook(sourceWorkbook, yesCount, noCount)
+        
+        ' Close the workbook
+        sourceWorkbook.Close False
+    Next i
+
+    ' Calculate the subtotals (which are simply the total yesCount and noCount across all workbooks)
+    totalYes = yesCount
+    totalNo = noCount
+
+    ' Check if the "Results" sheet already exists
+    sheetExists = False
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name = "Results" Then
+            sheetExists = True
+            Set resultsSheet = ws
+            Exit For
+        End If
+    Next ws
+
+    ' If "Results" sheet does not exist, create it
+    If Not sheetExists Then
+        Set resultsSheet = ThisWorkbook.Sheets.Add
+        resultsSheet.Name = "Results"
+        ' Add headers to the sheet
+        resultsSheet.Cells(1, 1).Value = "Timestamp"
+        resultsSheet.Cells(1, 2).Value = "Total YES Count"
+        resultsSheet.Cells(1, 3).Value = "Total NO Count"
+        resultsSheet.Cells(1, 4).Value = "Subtotal YES"
+        resultsSheet.Cells(1, 5).Value = "Subtotal NO"
+    End If
+
+    ' Find the last row in the Results sheet to append data
+    lastRow = resultsSheet.Cells(resultsSheet.Rows.Count, "A").End(xlUp).Row + 1
+
+    ' Append the results
+    resultsSheet.Cells(lastRow, 1).Value = Now() ' Add current timestamp
+    resultsSheet.Cells(lastRow, 2).Value = totalYes
+    resultsSheet.Cells(lastRow, 3).Value = totalNo
+    resultsSheet.Cells(lastRow, 4).Value = totalYes ' Subtotal YES
+    resultsSheet.Cells(lastRow, 5).Value = totalNo ' Subtotal NO
+
+    ' Notify the user that the operation is complete
+    MsgBox "Counting complete! Data has been appended to the 'Results' sheet.", vbInformation
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "An error occurred: " & Err.Description, vbExclamation
+
+End Sub
+
+' Function to count rows for "YES" and "NO" sheets in a workbook
+Sub CountRowsInWorkbook(wb As Workbook, ByRef yesCount As Long, ByRef noCount As Long)
+    Dim ws As Worksheet
+    Dim lastRow As Long
+
+    For Each ws In wb.Sheets
+        If Right(ws.Name, 3) = "YES" Then
+            lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+            If lastRow > 1 Then yesCount = yesCount + (lastRow - 1) ' Deduct 1 for the header
+        ElseIf Right(ws.Name, 2) = "NO" Then
+            lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+            If lastRow > 1 Then noCount = noCount + (lastRow - 1) ' Deduct 1 for the header
+        End If
+    Next ws
+End Sub
