@@ -10,6 +10,7 @@ Sub CountUsedRowsFromMultipleWorkbooks()
     Dim sheetExists As Boolean
     Dim ws As Worksheet
     Dim wbName As String
+    Dim subtotal As Long
 
     On Error GoTo ErrorHandler ' Set up error handling
 
@@ -41,6 +42,7 @@ Sub CountUsedRowsFromMultipleWorkbooks()
         resultsSheet.Cells(1, 2).Value = "Workbook Name"
         resultsSheet.Cells(1, 3).Value = "Total YES Count"
         resultsSheet.Cells(1, 4).Value = "Total NO Count"
+        resultsSheet.Cells(1, 5).Value = "Subtotal"
     End If
 
     ' Loop through each selected workbook
@@ -58,6 +60,9 @@ Sub CountUsedRowsFromMultipleWorkbooks()
         ' Call the counting function for each workbook
         Call CountRowsInWorkbook(sourceWorkbook, yesCount, noCount)
         
+        ' Calculate subtotal for the current workbook
+        subtotal = yesCount + noCount
+        
         ' Close the workbook
         sourceWorkbook.Close False
 
@@ -70,9 +75,10 @@ Sub CountUsedRowsFromMultipleWorkbooks()
         resultsSheet.Cells(lastRow, 2).Value = wbName ' Workbook name
         resultsSheet.Cells(lastRow, 3).Value = yesCount ' YES Count
         resultsSheet.Cells(lastRow, 4).Value = noCount ' NO Count
+        resultsSheet.Cells(lastRow, 5).Value = subtotal ' Subtotal (YES + NO)
 
         ' Notify the user of the current workbook processing
-        MsgBox "Processed workbook: " & wbName & vbNewLine & "YES Count: " & yesCount & vbNewLine & "NO Count: " & noCount, vbInformation
+        MsgBox "Processed workbook: " & wbName & vbNewLine & "YES Count: " & yesCount & vbNewLine & "NO Count: " & noCount & vbNewLine & "Subtotal: " & subtotal, vbInformation
         
         ' Save the workbook (optional step if you're saving results somewhere else, like to the workbook itself)
         ' ThisWorkbook.Save ' Uncomment if you want to save after each workbook's results are appended.
