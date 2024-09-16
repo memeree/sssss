@@ -4,7 +4,6 @@ Sub CountUsedRowsFromMultipleWorkbooks()
     Dim i As Long
     Dim sourceWorkbook As Workbook
     Dim yesCount As Long, noCount As Long
-    Dim totalYes As Long, totalNo As Long
     Dim filePath As String
     Dim resultsSheet As Worksheet
     Dim lastRow As Long
@@ -22,26 +21,6 @@ Sub CountUsedRowsFromMultipleWorkbooks()
         Exit Sub
     End If
 
-    ' Initialize counters
-    yesCount = 0
-    noCount = 0
-
-    ' Loop through each selected workbook
-    For i = LBound(selectedFiles) To UBound(selectedFiles)
-        ' Open each workbook
-        Set sourceWorkbook = Workbooks.Open(selectedFiles(i))
-        
-        ' Call the counting function for each workbook
-        Call CountRowsInWorkbook(sourceWorkbook, yesCount, noCount)
-        
-        ' Close the workbook
-        sourceWorkbook.Close False
-    Next i
-
-    ' Calculate the subtotals (which are simply the total yesCount and noCount across all workbooks)
-    totalYes = yesCount
-    totalNo = noCount
-
     ' Check if the "Results" sheet already exists
     sheetExists = False
     For Each ws In ThisWorkbook.Sheets
@@ -52,27 +31,41 @@ Sub CountUsedRowsFromMultipleWorkbooks()
         End If
     Next ws
 
-    ' If "Results" sheet does not exist, create it
+    ' If "Results" sheet does not exist, create it and add headers
     If Not sheetExists Then
         Set resultsSheet = ThisWorkbook.Sheets.Add
         resultsSheet.Name = "Results"
         ' Add headers to the sheet
         resultsSheet.Cells(1, 1).Value = "Timestamp"
-        resultsSheet.Cells(1, 2).Value = "Total YES Count"
-        resultsSheet.Cells(1, 3).Value = "Total NO Count"
-        resultsSheet.Cells(1, 4).Value = "Subtotal YES"
-        resultsSheet.Cells(1, 5).Value = "Subtotal NO"
+        resultsSheet.Cells(1, 2).Value = "Workbook Name"
+        resultsSheet.Cells(1, 3).Value = "Total YES Count"
+        resultsSheet.Cells(1, 4).Value = "Total NO Count"
     End If
 
-    ' Find the last row in the Results sheet to append data
-    lastRow = resultsSheet.Cells(resultsSheet.Rows.Count, "A").End(xlUp).Row + 1
+    ' Loop through each selected workbook
+    For i = LBound(selectedFiles) To UBound(selectedFiles)
+        ' Open each workbook
+        Set sourceWorkbook = Workbooks.Open(selectedFiles(i))
+        
+        ' Initialize counters for each workbook
+        yesCount = 0
+        noCount = 0
+        
+        ' Call the counting function for each workbook
+        Call CountRowsInWorkbook(sourceWorkbook, yesCount, noCount)
+        
+        ' Close the workbook
+        sourceWorkbook.Close False
 
-    ' Append the results
-    resultsSheet.Cells(lastRow, 1).Value = Now() ' Add current timestamp
-    resultsSheet.Cells(lastRow, 2).Value = totalYes
-    resultsSheet.Cells(lastRow, 3).Value = totalNo
-    resultsSheet.Cells(lastRow, 4).Value = totalYes ' Subtotal YES
-    resultsSheet.Cells(lastRow, 5).Value = totalNo ' Subtotal NO
+        ' Find the last row in the Results sheet to append data
+        lastRow = resultsSheet.Cells(resultsSheet.Rows.Count, "A").End(xlUp).Row + 1
+
+        ' Append the results for the current workbook
+        resultsSheet.Cells(lastRow, 1).Value = Now() ' Add current timestamp
+        resultsSheet.Cells(lastRow, 2).Value = sourceWorkbook.Name ' Workbook name
+        resultsSheet.Cells(lastRow, 3).Value = yesCount ' YES Count
+        resultsSheet.Cells(lastRow, 4).Value = noCount ' NO Count
+    Next i
 
     ' Notify the user that the operation is complete
     MsgBox "Counting complete! Data has been appended to the 'Results' sheet.", vbInformation
