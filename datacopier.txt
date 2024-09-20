@@ -4,7 +4,7 @@ Sub ImportDataToSourceWorkbook()
     Dim destinationSheet As Worksheet
     Dim fileDialog As FileDialog
     Dim lastRow As Long, destRow As Long
-    Dim i As Long
+    Dim i As Long, j As Long
     Dim sheetName As String
     Dim sheetSuffix As String
     Dim region As String
@@ -90,5 +90,16 @@ Sub ImportDataToSourceWorkbook()
         End If
     Next sourceSheet
 
-    MsgBox "Data import completed successfully!", vbInformation
+    ' Remove all instances of double quotes from the data in the Consolidated Data sheet
+    With destinationSheet
+        For i = 2 To destRow - 1 ' Loop through each row with data
+            For j = 1 To 10 ' Loop through columns A to J
+                If Not IsEmpty(.Cells(i, j).Value) Then
+                    .Cells(i, j).Value = Replace(.Cells(i, j).Value, """", "") ' Replace double quotes
+                End If
+            Next j
+        Next i
+    End With
+
+    MsgBox "Data import and cleaning completed successfully!", vbInformation
 End Sub
