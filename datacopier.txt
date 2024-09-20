@@ -70,36 +70,4 @@ Sub ImportDataToSourceWorkbook()
                     If UCase(Left(sheetName, 3)) = "WJA" Then
                         region = "EMEA"
                     ElseIf UCase(Left(sheetName, 3)) = "AMS" Then
-                        region = "AMS"
-                    Else
-                        region = ""
-                    End If
-                    
-                    ' Append the region if it exists
-                    destinationSheet.Cells(destRow, 8).Value = region
-                    
-                    ' Capture the full sheet name
-                    destinationSheet.Cells(destRow, 9).Value = sheetName
-                    
-                    ' Capture the full workbook name
-                    destinationSheet.Cells(destRow, 10).Value = sourceWorkbook.Name
-                    
-                    destRow = destRow + 1
-                Next i
-            End If
-        End If
-    Next sourceSheet
-
-    ' Remove all instances of double quotes from the data in the Consolidated Data sheet
-    With destinationSheet
-        For i = 2 To destRow - 1 ' Loop through each row with data
-            For j = 1 To 10 ' Loop through columns A to J
-                If Not IsEmpty(.Cells(i, j).Value) Then
-                    .Cells(i, j).Value = Replace(.Cells(i, j).Value, """", "") ' Replace double quotes
-                End If
-            Next j
-        Next i
-    End With
-
-    MsgBox "Data import and cleaning completed successfully!", vbInformation
-End Sub
+        
