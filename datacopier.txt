@@ -1,0 +1,73 @@
+Sub ImportDataToSourceWorkbook()
+    Dim sourceWorkbook As Workbook
+    Dim sourceSheet As Worksheet
+    Dim destinationSheet As Worksheet
+    Dim fileDialog As FileDialog
+    Dim lastRow As Long, destRow As Long
+    Dim i As Long
+    Dim sheetName As String
+    Dim sheetSuffix As String
+    Dim region As String
+
+    ' Open file dialog to select the source workbook
+    Set fileDialog = Application.FileDialog(msoFileDialogFilePicker)
+    With fileDialog
+        .Title = "Select the workbook to import data from"
+        .Filters.Add "Excel Files", "*.xls; *.xlsx; *.xlsm", 1
+        .AllowMultiSelect = False
+        If .Show <> -1 Then Exit Sub
+        Set sourceWorkbook = Workbooks.Open(.SelectedItems(1))
+    End With
+
+    ' Create a new worksheet in the source workbook for data consolidation
+    Set destinationSheet = sourceWorkbook.Worksheets.Add
+    destinationSheet.Name = "Consolidated Data"
+    destRow = 1
+
+    ' Loop through each sheet in the source workbook
+    For Each sourceSheet In sourceWorkbook.Worksheets
+        ' Skip the newly added "Consolidated Data" sheet
+        If sourceSheet.Name <> "Consolidated Data" Then
+            lastRow = sourceSheet.Cells(sourceSheet.Rows.Count, 1).End(xlUp).Row
+            
+            ' Skip if there are no rows to copy after the header
+            If lastRow > 1 Then
+                ' Copy data from columns A to F (excluding header row)
+                For i = 2 To lastRow
+                    destinationSheet.Cells(destRow, 1).Resize(, 6).Value = sourceSheet.Cells(i, 1).Resize(, 6).Value
+                    
+                    ' Get the sheet name
+                    sheetName = sourceSheet.Name
+                    
+                    ' Check if the sheet name ends with "yes" or "no"
+                    If Right(LCase(sheetName), 3) = "yes" Then
+                        sheetSuffix = "yes"
+                    ElseIf Right(LCase(sheetName), 2) = "no" Then
+                        sheetSuffix = "no"
+                    Else
+                        sheetSuffix = ""
+                    End If
+                    
+                    ' Append the suffix if it exists
+                    destinationSheet.Cells(destRow, 7).Value = sheetSuffix
+                    
+                    ' Determine the region based on the sheet name prefix
+                    If UCase(Left(sheetName, 3)) = "WJA" Then
+                        region = "EMEA"
+                    ElseIf UCase(Left(sheetName, 3)) = "AMS" Then
+                        region = "AMS"
+                    Else
+                        region = ""
+                    End If
+                    
+                    ' Append the region if it exists
+                    destinationSheet.Cells(destRow, 8).Value = region
+                    
+                    destRow = destRow + 1
+                Next i
+            End If
+        End If
+    Next sourceSheet
+
+    MsgBox "Data import completed successfully!", vbInformation
+End Sub
