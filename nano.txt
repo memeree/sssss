@@ -1,0 +1,138 @@
+Sub ReplaceCommasInQuotes()
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim data As String
+    Dim newData As String
+    Dim quoteOpened As Boolean
+    Dim i As Long
+
+    For Each ws In ThisWorkbook.Sheets
+        For Each cell In ws.UsedRange
+            data = cell.Value
+            newData = ""
+            quoteOpened = False
+
+            ' Loop through each character
+            For i = 1 To Len(data)
+                If Mid(data, i, 1) = """" Then
+                    quoteOpened = Not quoteOpened ' Toggle inside/outside quotes
+                End If
+                If quoteOpened And Mid(data, i, 1) = "," Then
+                    newData = newData & "|" ' Replace comma inside quotes
+                Else
+                    newData = newData & Mid(data, i, 1)
+                End If
+            Next i
+
+            ' Update cell if changes were made
+            If newData <> data Then
+                cell.Value = newData
+            End If
+        Next cell
+    Next ws
+End Sub
+
+Sub ConvertTextToColumns()
+    Dim ws As Worksheet
+    For Each ws In ThisWorkbook.Sheets
+        With ws
+            .Columns("A:A").TextToColumns Destination:=Range("A1"), DataType:=xlDelimited, TextQualifier:=xlDoubleQuote, _
+                                         ConsecutiveDelimiter:=False, Tab:=False, Semicolon:=False, _
+                                         Comma:=True, Space:=False, Other:=False
+        End With
+    Next ws
+End Sub
+
+
+Sub RemoveDeviceFirmwareRevision()
+    Dim ws As Worksheet
+    Dim headerRow As Range
+    Dim col As Range
+    Dim columnToDelete As Long
+
+    For Each ws In ThisWorkbook.Sheets
+        Set headerRow = ws.Rows(1)
+        For Each col In headerRow
+            If col.Value = "DeviceFirmwareRevision" Then
+                columnToDelete = col.Column
+                ws.Columns(columnToDelete).Delete
+                Exit For ' Assumes only one such column per sheet
+            End If
+        Next col
+    Next ws
+End Sub
+
+
+Sub ReplaceSpacesAndQuotes()
+    Dim ws As Worksheet
+    Dim cell As Range
+
+    For Each ws In ThisWorkbook.Sheets
+        For Each cell In ws.UsedRange
+            cell.Value = Replace(cell.Value, " """, "") ' Remove space followed by a double quote
+            cell.Value = Replace(cell.Value, """", "")  ' Remove all remaining double quotes
+        Next cell
+    Next ws
+End Sub
+
+
+Sub CopyDataToNewSheet()
+    Dim ws As Worksheet
+    Dim newSheet As Worksheet
+    Dim lastRow As Long
+    Dim newSheetRow As Long
+    Dim sheetName As String
+    Dim lastPart As String
+    Dim copyRange As Range
+    Dim headersCopied As Boolean
+
+    ' Create a new sheet
+    Set newSheet = ThisWorkbook.Sheets.Add
+    newSheet.Name = "Summary"
+
+    ' Set the initial row to 1 for the new sheet
+    newSheetRow = 1
+    headersCopied = False
+
+    ' Loop through all the sheets except the new sheet
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name <> newSheet.Name Then
+            sheetName = ws.Name
+
+            ' Check if the sheet name ends with YES or NO
+            If Right(sheetName, 3) = "YES" Or Right(sheetName, 2) = "NO" Then
+                lastPart = Right(sheetName, 3)
+                If lastPart = "YES" Then
+                    lastPart = "YES"
+                ElseIf Right(sheetName, 2) = "NO" Then
+                    lastPart = "NO"
+                End If
+
+                ' If this is the first valid sheet, copy headers
+                If headersCopied = False Then
+                    ws.Range("A1").EntireRow.Copy Destination:=newSheet.Range("A1")
+                    newSheet.Cells(1, 2).Value = "Sheet Name"
+                    newSheet.Cells(1, 3).Value = "Last Part"
+                    headersCopied = True
+                    newSheetRow = 2 ' Start appending data from row 2
+                End If
+
+                ' Find the last row in column A of the current sheet
+                lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+
+                ' Copy data from column A (excluding the header)
+                If lastRow > 1 Then
+                    Set copyRange = ws.Range("A2:A" & lastRow)
+                    copyRange.Copy Destination:=newSheet.Cells(newSheetRow, 1)
+
+                    ' Append the sheet name and the last part in the next columns
+                    newSheet.Range("B" & newSheetRow & ":B" & (newSheetRow + copyRange.Rows.Count - 1)).Value = sheetName
+                    newSheet.Range("C" & newSheetRow & ":C" & (newSheetRow + copyRange.Rows.Count - 1)).Value = lastPart
+
+                    ' Update the next available row in the new sheet
+                    newSheetRow = newSheetRow + copyRange.Rows.Count
+                End If
+            End If
+        End If
+    Next ws
+End Sub
