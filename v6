@@ -1,0 +1,114 @@
+Sub ProcessAndCopyData()
+    Dim ws As Worksheet
+    Dim newSheet As Worksheet
+    Dim lastRow As Long
+    Dim newSheetRow As Long
+    Dim sheetName As String
+    Dim lastPart As String
+    Dim headersCopied As Boolean
+    Dim i As Long
+    Dim rng As Range
+    Dim cell As Range
+    Dim columnToDelete As Long
+
+    ' Create a new sheet
+    Set newSheet = ThisWorkbook.Sheets.Add
+    newSheet.Name = "Summary"
+
+    ' Set the initial row to 1 for the new sheet
+    newSheetRow = 1
+    headersCopied = False
+
+    ' Loop through all the sheets except the new sheet
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name <> newSheet.Name Then
+            sheetName = ws.Name
+
+            ' Replace space followed by double quotes and remove remaining double quotes in the entire sheet
+            ws.Cells.Replace What:=" """, Replacement:="", LookAt:=xlPart
+            ws.Cells.Replace What:="""", Replacement:="", LookAt:=xlPart
+
+            ' Perform Text to Columns in column A using a comma delimiter
+            lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+            If lastRow > 1 Then
+                Set rng = ws.Range("A1:A" & lastRow)
+                rng.TextToColumns Destination:=ws.Range("A1"), DataType:=xlDelimited, _
+                    TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, _
+                    Tab:=False, Semicolon:=False, Comma:=True, Space:=False, Other:=False
+            End If
+
+            ' Replace commas inside double quotes with pipes
+            For Each cell In rng
+                If InStr(cell.Value, Chr(34)) > 0 Then ' Check if cell contains double quotes
+                    cell.Value = ReplaceCommasInsideQuotes(cell.Value)
+                End If
+            Next cell
+
+            ' Remove the 'DeviceFirmwareRevision' column, if it exists
+            On Error Resume Next
+            columnToDelete = ws.Rows(1).Find(What:="DeviceFirmwareRevision", LookAt:=xlWhole).Column
+            If columnToDelete > 0 Then
+                ws.Columns(columnToDelete).Delete
+            End If
+            On Error GoTo 0
+
+            ' Check if the sheet name ends with YES or NO
+            If Right(sheetName, 3) = "YES" Or Right(sheetName, 2) = "NO" Then
+                lastPart = Right(sheetName, 3)
+                If lastPart = "YES" Then
+                    lastPart = "YES"
+                ElseIf Right(sheetName, 2) = "NO" Then
+                    lastPart = "NO"
+                End If
+
+                ' If this is the first valid sheet, copy headers
+                If headersCopied = False Then
+                    ws.Range("A1").EntireRow.Copy Destination:=newSheet.Range("A1")
+                    newSheet.Cells(1, 2).Value = "Sheet Name"
+                    newSheet.Cells(1, 3).Value = "Last Part"
+                    headersCopied = True
+                    newSheetRow = 2 ' Start appending data from row 2
+                End If
+
+                ' Copy data from column A (excluding the header)
+                If lastRow > 1 Then
+                    Set rng = ws.Range("A2:A" & lastRow)
+                    rng.Copy Destination:=newSheet.Cells(newSheetRow, 1)
+
+                    ' Append the sheet name and the last part in the next columns
+                    newSheet.Range("B" & newSheetRow & ":B" & (newSheetRow + rng.Rows.Count - 1)).Value = sheetName
+                    newSheet.Range("C" & newSheetRow & ":C" & (newSheetRow + rng.Rows.Count - 1)).Value = lastPart
+
+                    ' Update the next available row in the new sheet
+                    newSheetRow = newSheetRow + rng.Rows.Count
+                End If
+            End If
+        End If
+    Next ws
+End Sub
+
+' Function to replace commas inside double quotes with pipes
+Function ReplaceCommasInsideQuotes(ByVal text As String) As String
+    Dim inQuotes As Boolean
+    Dim i As Long
+    Dim result As String
+    inQuotes = False
+
+    For i = 1 To Len(text)
+        Select Case Mid(text, i, 1)
+            Case Chr(34) ' Double quotes
+                inQuotes = Not inQuotes
+                result = result & Mid(text, i, 1)
+            Case "," ' Comma
+                If inQuotes Then
+                    result = result & "|" ' Replace with pipe if inside quotes
+                Else
+                    result = result & Mid(text, i, 1)
+                End If
+            Case Else
+                result = result & Mid(text, i, 1)
+        End Select
+    Next i
+
+    ReplaceCommasInsideQuotes = result
+End Function
